@@ -1,0 +1,12 @@
+{
+    "ignore": [
+        ".git",
+        "node_modules/",
+        "dist/",
+        "covarage/"
+    ],
+    "watch": [
+        "src/*"
+    ],
+    "ext": "js,ts,json"
+}
