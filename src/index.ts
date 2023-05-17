@@ -1,8 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import { DataSource } from 'typeorm';
+import { routes } from './routes';
+import dotenv from "dotenv";
+import cookieParser from 'cookie-parser';
 
-const AppDataSource = new DataSource({
+dotenv.config();
+
+export const AppDataSource = new DataSource({
     "type": "mysql",
     "host": "db",
     "port": 3306,
@@ -12,25 +17,25 @@ const AppDataSource = new DataSource({
     "synchronize": true,
     "logging": false,
     "entities": [
-        "src/entity/**/*.ts"
+        "src/entity/*.ts"
     ]
 });
 
-AppDataSource.initialize()
+AppDataSource
+    .initialize()
     .then(() => {
         const app = express();
 
+        app.use(cookieParser());
         app.use(express.json());
-
         app.use(cors({
+            credentials: true,
             origin: [
-                'http://localhost:3000'
+                'http://localhost:3000',
             ]
         }));
 
-        app.get('/', (request, response) => {
-            response.send('Hello World')
-        });
+        routes(app);
 
         app.listen(3001, () => {
             console.log('listening to 3000')
