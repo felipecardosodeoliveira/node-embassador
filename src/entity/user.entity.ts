@@ -20,5 +20,9 @@ export class User {
     password: string
 
     @Column()
-    is_embassador: boolean
+    is_embassador: boolean;
+
+    get name(): string {
+        return this.first_name + ' ' + this.last_name
+    }
 }

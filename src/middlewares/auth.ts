@@ -24,7 +24,18 @@ export const AuthMiddleware = async (req: Request, res: Response, next: Function
             .where("user.id = :id", { id: payload.id })
             .getOne();
 
+        const is_ambassador = req.path.indexOf('api/ambassador') >= 0;
+
+        if ((is_ambassador && payload.scope === 'admin') || (!is_ambassador && payload.scope === 'ambassador')) {
+            return res
+                .status(401)
+                .send({
+                    message: 'unauthorized'
+                });
+        }
+
         req["user"] = user;
+
         next();
     } catch (error) {
         return res.status(401).send({

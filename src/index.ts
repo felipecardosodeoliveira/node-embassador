@@ -4,8 +4,13 @@ import { DataSource } from 'typeorm';
 import { routes } from './routes';
 import dotenv from "dotenv";
 import cookieParser from 'cookie-parser';
+import { createClient } from 'redis';
 
 dotenv.config();
+
+export const client = createClient({
+    url: 'redis://redis:6379'
+});
 
 export const AppDataSource = new DataSource({
     "type": "mysql",
@@ -23,7 +28,10 @@ export const AppDataSource = new DataSource({
 
 AppDataSource
     .initialize()
-    .then(() => {
+    .then(async () => {
+
+        await client.connect();
+        
         const app = express();
 
         app.use(cookieParser());

@@ -7,6 +7,7 @@ import { AppDataSource } from "..";
 import { User } from "../entity/user.entity";
 
 import { sign, verify } from "jsonwebtoken";
+import { Order } from "../entity/order.entity";
 
 export const Register = async (req: Request, res: Response) => {
     const body = req.body;
@@ -20,7 +21,12 @@ export const Register = async (req: Request, res: Response) => {
 
     body.password = bcryptjs.hashSync(body.password, 10);
 
-    const user = await AppDataSource.getRepository(User).save(body);
+    const user = await AppDataSource
+        .getRepository(User)
+        .save({
+            ...body,
+            is_embassador: req.path === '/api/ambassador/register'
+        });
 
     delete user.password;
 
@@ -48,7 +54,18 @@ export const Loggin = async (req: Request, res: Response) => {
         });
     }
 
-    const token = sign({ id: user.id }, process.env.SECRET_KEY);
+    const adminLogin = req.path === '/api/admin/login';
+
+    if (user.is_embassador && adminLogin) {
+        return res.status(401).send({
+            message: 'unauthorized'
+        });
+    }
+
+    const token = sign({
+        id: user.id,
+        scope: adminLogin ? "admin" : "ambassador"
+    }, process.env.SECRET_KEY);
 
     res.cookie("jwt", token, {
         expires: new Date(
@@ -62,8 +79,27 @@ export const Loggin = async (req: Request, res: Response) => {
     });
 }
 
-export const AutenticatedUser = async (req: Request, res: Response) => {
-    return res.send(req["user"]);
+export const AuthenticatedUser = async (req: Request, res: Response) => {
+    const user = req['user'];
+
+    if (req.path === '/api/admin/user') {
+        return res.send(user);
+    }
+
+    const orders = await AppDataSource
+        .getRepository(Order)
+        .createQueryBuilder("orders")
+        .where("order.user_id = :id AND order.completed = :completed", {
+            id: user.id,
+            completed: true
+        })
+        .loadAllRelationIds({
+            relations: ['order_items']
+        }).getMany();
+
+    user.revenue = orders.reduce((s: number, o: Order) => s + o.ambassador_revenue, 0);
+
+    res.send(user);
 }
 
 export const Logout = async (req: Request, res: Response) => {
@@ -97,7 +133,7 @@ export const UpdatePassword = async (req: Request, res: Response) => {
     await AppDataSource
         .createQueryBuilder()
         .update(User)
-        .set({ 
+        .set({
             password: bcryptjs.hashSync(req.body.password, 10)
         })
         .where("user.id = :id", { id: user.id })
